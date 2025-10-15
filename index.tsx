@@ -88,37 +88,37 @@ document.addEventListener('keyup', (event) => {
 });
 
 
-// --- ブロック操作 ---
+// --- ブロック操作（チャンクデータに反映） ---
 const raycaster = new THREE.Raycaster();
 const rollOverMesh = new THREE.Mesh(
     new THREE.BoxGeometry(1.01, 1.01, 1.01),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true })
+    new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.35, transparent: true })
 );
 scene.add(rollOverMesh);
 
+function worldCoordsFromHit(intersect: any, place: boolean): { x:number; y:number; z:number } {
+    const point = intersect.point.clone();
+    // 法線（ワールド空間）方向へ微小にオフセットして置く/壊す位置を決定
+    const normal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld);
+    const eps = 0.001;
+    if (place) point.addScaledVector(normal, eps); else point.addScaledVector(normal, -eps);
+    return { x: Math.floor(point.x), y: Math.floor(point.y), z: Math.floor(point.z) };
+}
+
 document.addEventListener('mousedown', (event) => {
     if (!controls.isLocked) return;
-
     raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-    const intersects = raycaster.intersectObjects(objects, false);
+    const intersects = raycaster.intersectObjects(runtimeWorld.getCollisionTargets(), false);
+    if (intersects.length === 0) return;
+    const intersect = intersects[0];
+    if (intersect.distance > 8) return; // 射程制限
 
-    if (intersects.length > 0) {
-        const intersect = intersects[0];
-        if (intersect.distance > 8) return; // 届く範囲を制限
-
-        if (event.button === 2) { // 右クリック: ブロックを置く
-            const newCube = new THREE.Mesh(cubeGeometry, stoneMaterial);
-            newCube.position.copy(intersect.object.position).add(intersect.face.normal);
-            newCube.castShadow = true;
-            newCube.receiveShadow = true;
-            scene.add(newCube);
-            objects.push(newCube);
-        } else if (event.button === 0) { // 左クリック: ブロックを壊す
-            if (intersect.object !== scene) {
-                scene.remove(intersect.object);
-                objects.splice(objects.indexOf(intersect.object), 1);
-            }
-        }
+    if (event.button === 2) { // 右クリック: 置く（石）
+        const pos = worldCoordsFromHit(intersect, true);
+        runtimeWorld.setBlockAtWorld(pos.x, pos.y, pos.z, 3 /* Stone */);
+    } else if (event.button === 0) { // 左クリック: 壊す（空気）
+        const pos = worldCoordsFromHit(intersect, false);
+        runtimeWorld.setBlockAtWorld(pos.x, pos.y, pos.z, 0 /* Air */);
     }
 });
 document.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -177,10 +177,11 @@ function animate() {
         
         // ブロック設置/破壊用のヘルパー表示
         raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-        const intersects = raycaster.intersectObjects(objects, false);
+        const intersects = raycaster.intersectObjects(runtimeWorld.getCollisionTargets(), false);
         if (intersects.length > 0 && intersects[0].distance < 8) {
             const intersect = intersects[0];
-            rollOverMesh.position.copy(intersect.object.position).add(intersect.face.normal);
+            const pos = worldCoordsFromHit(intersect, true);
+            rollOverMesh.position.set(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
             rollOverMesh.visible = true;
         } else {
             rollOverMesh.visible = false;

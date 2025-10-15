@@ -32,31 +32,10 @@ directionalLight.shadow.mapSize.width = 2048;
 directionalLight.shadow.mapSize.height = 2048;
 scene.add(directionalLight);
 
-// --- ワールド生成 ---
-const objects = [];
-const worldSize = 32; // パフォーマンス安定のため初期サイズを抑える
-const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-// マテリアルは再利用してメモリとパフォーマンスを最適化
-const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x4caf50 });
-const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x795548 });
-const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-
-for (let x = -worldSize / 2; x < worldSize / 2; x++) {
-    for (let z = -worldSize / 2; z < worldSize / 2; z++) {
-        // sinとcosを使って滑らかな地形を生成
-        const height = Math.floor(Math.cos(x / 8) * 4 + Math.sin(z / 8) * 4) + 8;
-        for (let y = 0; y < height; y++) {
-            const material = y === height - 1 ? grassMaterial : (y > height - 4 ? dirtMaterial : stoneMaterial); // 草、土、石
-            const cube = new THREE.Mesh(cubeGeometry, material);
-            cube.position.set(x, y + 0.5, z);
-            // 静的ブロックは影のキャストを無効化（大量オブジェクトでのコスト削減）
-            cube.castShadow = false;
-            cube.receiveShadow = true;
-            scene.add(cube);
-            objects.push(cube);
-        }
-    }
-}
+// --- ワールド生成（チャンクベース） ---
+import { RuntimeWorld } from './src/world/runtime.ts';
+const runtimeWorld = new RuntimeWorld(scene, 'seed1', 1);
+const objects: any[] = []; // 互換用（将来的に削除）
 
 
 // --- プレイヤーコントロールと物理演算 ---
@@ -204,6 +183,10 @@ function animate() {
             rollOverMesh.visible = false;
         }
     }
+
+    // チャンク更新（毎フレーム）
+    const ppos = controls.getObject().position;
+    runtimeWorld.update(ppos.x, ppos.z);
 
     renderer.render(scene, camera);
 

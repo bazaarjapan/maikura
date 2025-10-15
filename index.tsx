@@ -156,10 +156,10 @@ function animate() {
         controls.moveForward(-playerVelocity.z * delta);
         controls.getObject().position.y += playerVelocity.y * delta;
         
-        // 衝突判定
+        // 衝突判定（チャンクメッシュを対象に）
         const playerPos = controls.getObject().position;
         raycaster.set(playerPos, new THREE.Vector3(0, -1, 0));
-        const groundIntersections = raycaster.intersectObjects(objects, false);
+        const groundIntersections = raycaster.intersectObjects(runtimeWorld.getCollisionTargets(), false);
 
         if (groundIntersections.length > 0 && groundIntersections[0].distance < 1.75) {
             playerPos.y = groundIntersections[0].point.y + 1.75;

@@ -41,5 +41,8 @@ export class RuntimeWorld {
       this.cm.onChunkGenerated({ key: { seed: req.seed, cx: req.cx, cz: req.cz }, blocks: data.blocks });
     }
   }
-}
 
+  getCollisionTargets(): any[] {
+    return Array.from(this.meshes.values());
+  }
+}

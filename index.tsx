@@ -7,6 +7,7 @@
 // 型エラーを避けるためにTypeScriptにグローバル変数として宣言します。
 declare const THREE: any;
 import { formatFps, formatCoords } from './src/world/hud.ts';
+import { RollingFps } from './src/world/perf.ts';
 
 // --- シーン、カメラ、レンダラーのセットアップ ---
 const scene = new THREE.Scene();
@@ -132,10 +133,12 @@ window.addEventListener('resize', () => {
 
 // --- レンダリングループ ---
 const clock = new THREE.Clock();
+const fpsMon = new RollingFps(60);
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
     const fps = 1 / Math.max(delta, 1e-6);
+    fpsMon.update(delta);
 
     if (controls.isLocked) {
         // 摩擦と重力で速度を減衰
@@ -192,10 +195,12 @@ function animate() {
 
     // HUD 更新
     const fpsEl = document.getElementById('fps');
+    const fpsAvgEl = document.getElementById('fpsAvg');
     const coordsEl = document.getElementById('coords');
     if (fpsEl && coordsEl) {
         const p = controls.getObject().position;
         fpsEl.textContent = formatFps(fps);
+        if (fpsAvgEl) fpsAvgEl.textContent = `AVG: ${Math.round(fpsMon.average)}`;
         coordsEl.textContent = formatCoords(p.x, p.y, p.z);
     }
 }
